@@ -7,25 +7,17 @@ This package automates the Vencord patching process and launches Discord on Wind
 - `VencordAutoStart.ps1` - Main PowerShell script that patches Vencord and launches Discord
 - `VencordAutoStart.bat` - Batch file wrapper for startup compatibility
 - `SetupStartup.ps1` - Configuration script to add/remove from Windows startup
-- `SetupStartup-Bypass.bat` - Setup script that bypasses PowerShell execution policy
-- `RemoveFromStartup-Bypass.bat` - Removal script that bypasses PowerShell execution policy
+- `SetupStartup.bat` - Easy setup script (works on all Windows systems)
+- `RemoveFromStartup.bat` - Easy removal script (works on all Windows systems)
 - `VencordInstallerCli.exe` - The Vencord installer (should already be present)
 
 ## 🚀 Quick Setup
 
-### Option 1: Easy Setup (Works on all systems)
-1. Double-click `SetupStartup-Bypass.bat`
+### Automatic Setup (Recommended)
+1. Double-click `SetupStartup.bat`
 2. That's it! The script will now run on every Windows startup
 
-### Option 2: PowerShell Setup (If execution policy allows)
-1. Open PowerShell in this folder
-2. Run the setup script:
-   ```powershell
-   .\SetupStartup.ps1
-   ```
-3. If you get execution policy errors, use Option 1 instead
-
-### Option 3: Manual Setup (Traditional method)
+### Manual Setup (Alternative)
 1. Copy `VencordAutoStart.bat` to your Windows Startup folder:
    - Press `Win + R`, type `shell:startup`, press Enter
    - Copy the `.bat` file to this folder
@@ -35,44 +27,37 @@ This package automates the Vencord patching process and launches Discord on Wind
 
 ### Test the Script
 To test the automation without waiting for startup:
-```powershell
-.\VencordAutoStart.bat
+```cmd
+VencordAutoStart.bat
 ```
 
 ### Run with Options
 You can run the PowerShell script directly with options:
-```powershell
+```cmd
 # Patch Vencord but don't launch Discord
-.\VencordAutoStart.ps1 -NoLaunch
+powershell -ExecutionPolicy Bypass -File "VencordAutoStart.ps1" -NoLaunch
 
-# Run quietly (minimal output)
-.\VencordAutoStart.ps1 -Quiet
+# Run quietly (minimal output)  
+powershell -ExecutionPolicy Bypass -File "VencordAutoStart.ps1" -Quiet
 
 # Combine options
-.\VencordAutoStart.ps1 -NoLaunch -Quiet
+powershell -ExecutionPolicy Bypass -File "VencordAutoStart.ps1" -NoLaunch -Quiet
 ```
 
 ### Manual CLI Usage
 You can also run the Vencord installer directly:
-```powershell
+```cmd
 # Repair Vencord manually
-.\VencordInstallerCli.exe -repair -branch auto
+VencordInstallerCli.exe -repair -branch auto
 
 # Install Vencord
-.\VencordInstallerCli.exe -install -branch auto
+VencordInstallerCli.exe -install -branch auto
 ```
 
 ### Remove from Startup
 To remove the auto-start from Windows startup:
-
-**Easy method (Works on all systems):**
 ```cmd
-RemoveFromStartup-Bypass.bat
-```
-
-**PowerShell method (If execution policy allows):**
-```powershell
-.\SetupStartup.ps1 -Remove
+RemoveFromStartup.bat
 ```
 
 ## 🔍 Troubleshooting
@@ -101,23 +86,9 @@ Get-Content .\vencord-startup.log -Tail 20
 - Try running PowerShell as Administrator and re-run `SetupStartup.ps1`
 
 **PowerShell execution policy errors:**
-- The batch file uses `-ExecutionPolicy Bypass` to avoid policy issues
-- If you get "running scripts is disabled" error, try these solutions in order:
-
-  **Solution 1 - Temporary bypass (Recommended):**
-  ```powershell
-  powershell -ExecutionPolicy Bypass -File ".\SetupStartup.ps1"
-  ```
-
-  **Solution 2 - Current user policy (Permanent):**
-  ```powershell
-  Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
-  ```
-
-  **Solution 3 - Use the bypass batch file (Easiest):**
-  ```cmd
-  SetupStartup-Bypass.bat
-  ```
+- All batch files use `-ExecutionPolicy Bypass` to work on any Windows system
+- No manual PowerShell policy changes are needed
+- If you encounter any issues, try running as Administrator
 
 ## 🔧 How It Works
 

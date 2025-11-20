@@ -2,8 +2,8 @@
 REM RemoveFromStartup-Bypass.bat - Remove Vencord Auto-Start from startup
 REM This bypasses PowerShell execution policy restrictions
 
-echo Vencord Auto-Start Removal (Execution Policy Bypass)
-echo ====================================================
+echo Vencord Auto-Start Removal
+echo ==========================
 echo.
 
 REM Get the directory where this batch file is located
@@ -22,7 +22,11 @@ echo Removing Vencord Auto-Start from Windows startup...
 echo.
 
 REM Run PowerShell script with bypass execution policy and -Remove parameter
-powershell.exe -ExecutionPolicy Bypass -File "%PS_SCRIPT%" -Remove
+pwsh -ExecutionPolicy Bypass -File "%PS_SCRIPT%" -Remove 2>nul
+if %ERRORLEVEL% NEQ 0 (
+    REM Fallback to Windows PowerShell if pwsh is not available
+    powershell.exe -ExecutionPolicy Bypass -File "%PS_SCRIPT%" -Remove
+)
 
 REM Check if the command was successful
 if %ERRORLEVEL% EQU 0 (

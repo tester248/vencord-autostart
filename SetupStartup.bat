@@ -1,9 +1,9 @@
 @echo off
-REM SetupStartup-Bypass.bat - Bypass execution policy for setup
-REM This bypasses PowerShell execution policy restrictions
+REM SetupStartup.bat - Setup Vencord Auto-Start for Windows startup
+REM Uses execution policy bypass to work on all systems
 
-echo Vencord Auto-Start Setup (Execution Policy Bypass)
-echo ===================================================
+echo Vencord Auto-Start Setup
+echo ========================
 echo.
 
 REM Get the directory where this batch file is located
@@ -18,11 +18,15 @@ if not exist "%PS_SCRIPT%" (
     exit /b 1
 )
 
-echo Running setup with execution policy bypass...
+echo Adding to Windows startup...
 echo.
 
 REM Run PowerShell script with bypass execution policy
-powershell.exe -ExecutionPolicy Bypass -File "%PS_SCRIPT%"
+pwsh -ExecutionPolicy Bypass -File "%PS_SCRIPT%" 2>nul
+if %ERRORLEVEL% NEQ 0 (
+    REM Fallback to Windows PowerShell if pwsh is not available
+    powershell.exe -ExecutionPolicy Bypass -File "%PS_SCRIPT%"
+)
 
 REM Check if the command was successful
 if %ERRORLEVEL% EQU 0 (
