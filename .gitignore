@@ -1,0 +1,33 @@
+# Vencord Auto-Start .gitignore
+
+# Log files
+*.log
+vencord-startup.log
+
+# Windows system files
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# Temporary files
+*.tmp
+*.temp
+
+# PowerShell execution policy bypass cache
+*.ps1.cache
+
+# IDE/Editor files
+.vscode/
+.vs/
+*.swp
+*.swo
+*~
+
+# Backup files
+*.bak
+*.backup
+*.old
+
+# Windows shortcuts created by setup
+VencordAutoStart.lnk
