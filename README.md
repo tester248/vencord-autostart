@@ -7,19 +7,25 @@ This package automates the Vencord patching process and launches Discord on Wind
 - `VencordAutoStart.ps1` - Main PowerShell script that patches Vencord and launches Discord
 - `VencordAutoStart.bat` - Batch file wrapper for startup compatibility
 - `SetupStartup.ps1` - Configuration script to add/remove from Windows startup
+- `SetupStartup-Bypass.bat` - Setup script that bypasses PowerShell execution policy
+- `RemoveFromStartup-Bypass.bat` - Removal script that bypasses PowerShell execution policy
 - `VencordInstallerCli.exe` - The Vencord installer (should already be present)
 
 ## 🚀 Quick Setup
 
-### Option 1: Automatic Setup (Recommended)
-1. Open PowerShell as Administrator in this folder
+### Option 1: Easy Setup (Works on all systems)
+1. Double-click `SetupStartup-Bypass.bat`
+2. That's it! The script will now run on every Windows startup
+
+### Option 2: PowerShell Setup (If execution policy allows)
+1. Open PowerShell in this folder
 2. Run the setup script:
    ```powershell
    .\SetupStartup.ps1
    ```
-3. That's it! The script will now run on every Windows startup
+3. If you get execution policy errors, use Option 1 instead
 
-### Option 2: Manual Setup
+### Option 3: Manual Setup (Traditional method)
 1. Copy `VencordAutoStart.bat` to your Windows Startup folder:
    - Press `Win + R`, type `shell:startup`, press Enter
    - Copy the `.bat` file to this folder
@@ -58,6 +64,13 @@ You can also run the Vencord installer directly:
 
 ### Remove from Startup
 To remove the auto-start from Windows startup:
+
+**Easy method (Works on all systems):**
+```cmd
+RemoveFromStartup-Bypass.bat
+```
+
+**PowerShell method (If execution policy allows):**
 ```powershell
 .\SetupStartup.ps1 -Remove
 ```
@@ -89,9 +102,21 @@ Get-Content .\vencord-startup.log -Tail 20
 
 **PowerShell execution policy errors:**
 - The batch file uses `-ExecutionPolicy Bypass` to avoid policy issues
-- If you still have problems, run as Administrator:
+- If you get "running scripts is disabled" error, try these solutions in order:
+
+  **Solution 1 - Temporary bypass (Recommended):**
+  ```powershell
+  powershell -ExecutionPolicy Bypass -File ".\SetupStartup.ps1"
+  ```
+
+  **Solution 2 - Current user policy (Permanent):**
   ```powershell
   Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+  ```
+
+  **Solution 3 - Use the bypass batch file (Easiest):**
+  ```cmd
+  SetupStartup-Bypass.bat
   ```
 
 ## 🔧 How It Works
