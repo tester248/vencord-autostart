@@ -1,9 +1,9 @@
 @echo off
-REM SetupStartup.bat - Setup Vencord Auto-Start for Windows startup
-REM Uses execution policy bypass to work on all systems
+REM SetupStartup.bat - Setup Vencord Auto-Start via Task Scheduler
+REM Uses Task Scheduler for reliable execution order before Discord
 
-echo Vencord Auto-Start Setup
-echo ========================
+echo Vencord Auto-Start Setup (Task Scheduler Method)
+echo ===============================================
 echo.
 
 REM Get the directory where this batch file is located
@@ -18,7 +18,8 @@ if not exist "%PS_SCRIPT%" (
     exit /b 1
 )
 
-echo Adding to Windows startup...
+echo Adding to Windows startup via Task Scheduler...
+echo This method ensures reliable execution before Discord starts.
 echo.
 
 REM Run PowerShell script with bypass execution policy
@@ -32,9 +33,11 @@ REM Check if the command was successful
 if %ERRORLEVEL% EQU 0 (
     echo.
     echo Setup completed successfully!
+    echo Vencord will now be patched automatically 5 seconds after Windows login.
 ) else (
     echo.
     echo Setup encountered an error. Please check the output above.
+    echo You may need to run this as Administrator.
 )
 
 echo.

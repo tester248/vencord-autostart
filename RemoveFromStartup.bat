@@ -1,9 +1,9 @@
 @echo off
-REM RemoveFromStartup-Bypass.bat - Remove Vencord Auto-Start from startup
-REM This bypasses PowerShell execution policy restrictions
+REM RemoveFromStartup.bat - Remove Vencord Auto-Start scheduled task
+REM Uses Task Scheduler method for removal
 
-echo Vencord Auto-Start Removal
-echo ==========================
+echo Vencord Auto-Start Removal (Task Scheduler)
+echo ===========================================
 echo.
 
 REM Get the directory where this batch file is located
@@ -18,7 +18,7 @@ if not exist "%PS_SCRIPT%" (
     exit /b 1
 )
 
-echo Removing Vencord Auto-Start from Windows startup...
+echo Removing Vencord Auto-Start task from Windows startup...
 echo.
 
 REM Run PowerShell script with bypass execution policy and -Remove parameter

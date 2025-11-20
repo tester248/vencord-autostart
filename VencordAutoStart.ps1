@@ -1,11 +1,13 @@
-# VencordAutoStart.ps1 - Automate Vencord patching and Discord launch
-# Version: 1.0
+# VencordAutoStart.ps1 - Automate Vencord patching before Discord startup
+# Version: 2.0
 # Last Updated: November 2025
-# This script repairs Vencord and launches Discord automatically
+# This script repairs/patches Vencord before Discord launches
+# Use with Discord's built-in startup settings for best experience
 
 param(
-    [switch]$NoLaunch,  # Skip launching Discord
-    [switch]$Quiet      # Minimize output
+    [switch]$Quiet,         # Minimize output
+    [string[]]$Branches = @(),  # Specific branches to patch (e.g., "stable", "canary")
+    [switch]$ListOnly       # Only list Discord installations, don't patch
 )
 
 # Get the script directory
@@ -28,40 +30,47 @@ function Write-Log {
     Add-Content -Path $LogFile -Value $LogEntry -ErrorAction SilentlyContinue
 }
 
-function Find-DiscordExecutable {
-    # Common Discord installation paths
-    $DiscordPaths = @(
-        "$env:LOCALAPPDATA\Discord\Update.exe",
-        "$env:APPDATA\Discord\Update.exe",
-        "${env:ProgramFiles}\Discord\Discord.exe",
-        "${env:ProgramFiles(x86)}\Discord\Discord.exe"
+function Find-DiscordInstallations {
+    # Find all Discord installations - return simple array
+    $Results = @()
+    
+    # Check for different Discord branches in LocalAppData
+    $DiscordBranches = @(
+        @{ Name = "Stable"; Path = "$env:LOCALAPPDATA\Discord"; Branch = "stable" },
+        @{ Name = "PTB"; Path = "$env:LOCALAPPDATA\DiscordPTB"; Branch = "ptb" },
+        @{ Name = "Canary"; Path = "$env:LOCALAPPDATA\DiscordCanary"; Branch = "canary" }
     )
     
-    foreach ($Path in $DiscordPaths) {
-        if (Test-Path $Path) {
-            Write-Log "Found Discord at: $Path"
-            return $Path
-        }
-    }
-    
-    # If not found in common locations, try to find it via registry or Start Menu
-    try {
-        $DiscordShortcut = Get-ChildItem "$env:APPDATA\Microsoft\Windows\Start Menu\Programs" -Recurse -Filter "*Discord*.lnk" -ErrorAction SilentlyContinue | Select-Object -First 1
-        if ($DiscordShortcut) {
-            $Shell = New-Object -ComObject WScript.Shell
-            $Shortcut = $Shell.CreateShortcut($DiscordShortcut.FullName)
-            $TargetPath = $Shortcut.TargetPath
-            if (Test-Path $TargetPath) {
-                Write-Log "Found Discord via Start Menu shortcut: $TargetPath"
-                return $TargetPath
+    foreach ($Branch in $DiscordBranches) {
+        if (Test-Path $Branch.Path) {
+            # Look for executable
+            $UpdateExe = Join-Path $Branch.Path "Update.exe"
+            $DiscordExe = Join-Path $Branch.Path "Discord.exe"
+            
+            if (Test-Path $UpdateExe) {
+                $Results += [PSCustomObject]@{
+                    Name = $Branch.Name
+                    Path = $Branch.Path
+                    Executable = $UpdateExe
+                    Branch = $Branch.Branch
+                    LaunchArgs = @("--processStart", "Discord.exe")
+                }
+                Write-Log "Found Discord $($Branch.Name) at: $UpdateExe"
+            }
+            elseif (Test-Path $DiscordExe) {
+                $Results += [PSCustomObject]@{
+                    Name = $Branch.Name
+                    Path = $Branch.Path
+                    Executable = $DiscordExe
+                    Branch = $Branch.Branch
+                    LaunchArgs = @()
+                }
+                Write-Log "Found Discord $($Branch.Name) at: $DiscordExe"
             }
         }
     }
-    catch {
-        Write-Log "Could not find Discord via Start Menu search"
-    }
     
-    return $null
+    return $Results
 }
 
 try {
@@ -72,47 +81,98 @@ try {
         throw "VencordInstallerCli.exe not found at: $VencordInstaller"
     }
     
-    Write-Log "Running Vencord repair..."
+    # Find Discord installations
+    Write-Log "Scanning for Discord installations..."
     
-    # Run Vencord installer with repair option
-    try {
-        $ProcessResult = & $VencordInstaller "-repair" "-branch" "auto" 2>&1
-        $ExitCode = $LASTEXITCODE
-        
-        Write-Log "Vencord installer output: $($ProcessResult -join "`n")"
-        
-        if ($ExitCode -eq 0) {
-            Write-Log "Vencord repair completed successfully"
-        } else {
-            Write-Log "Vencord repair failed with exit code: $ExitCode"
+    $DiscordInstallations = @()
+    
+    # Check for Discord Stable
+    $StablePath = "$env:LOCALAPPDATA\Discord"
+    if (Test-Path $StablePath) {
+        $DiscordInstallations += [PSCustomObject]@{
+            Name = "Stable"
+            Path = $StablePath
+            Branch = "stable"
         }
-    } catch {
-        Write-Log "Error running Vencord installer: $($_.Exception.Message)"
-        $ExitCode = 1
+        Write-Log "Found Discord Stable at: $StablePath"
     }
     
-    # Launch Discord if not skipped
-    if (-not $NoLaunch) {
-        Write-Log "Looking for Discord executable..."
-        $DiscordPath = Find-DiscordExecutable
-        
-        if ($DiscordPath) {
-            Write-Log "Launching Discord..."
-            
-            # Special handling for Discord Update.exe
-            if ($DiscordPath -like "*Update.exe") {
-                Start-Process -FilePath $DiscordPath -ArgumentList "--processStart", "Discord.exe" -WindowStyle Hidden
-            } else {
-                Start-Process -FilePath $DiscordPath -WindowStyle Hidden
+    # Check for Discord PTB
+    $PTBPath = "$env:LOCALAPPDATA\DiscordPTB"
+    if (Test-Path $PTBPath) {
+        $DiscordInstallations += [PSCustomObject]@{
+            Name = "PTB"
+            Path = $PTBPath
+            Branch = "ptb"
+        }
+        Write-Log "Found Discord PTB at: $PTBPath"
+    }
+    
+    # Check for Discord Canary
+    $CanaryPath = "$env:LOCALAPPDATA\DiscordCanary"
+    if (Test-Path $CanaryPath) {
+        $DiscordInstallations += [PSCustomObject]@{
+            Name = "Canary"
+            Path = $CanaryPath
+            Branch = "canary"
+        }
+        Write-Log "Found Discord Canary at: $CanaryPath"
+    }
+    
+    $InstallationCount = $DiscordInstallations.Count
+    if ($InstallationCount -eq 0) {
+        Write-Log "No Discord installations found. Please install Discord first."
+        if (-not $Quiet) {
+            Write-Host "No Discord installations found. Please install Discord first." -ForegroundColor Yellow
+        }
+        exit 1
+    }
+    
+    Write-Log "Found $InstallationCount Discord installation(s)"
+    
+    # List installations and exit if ListOnly is specified
+    if ($ListOnly) {
+        Write-Log "Discord installations found:"
+        foreach ($Discord in $DiscordInstallations) {
+            Write-Log "- $($Discord.Name) ($($Discord.Branch)) at $($Discord.Path)"
+            if (-not $Quiet) {
+                Write-Host "- $($Discord.Name) ($($Discord.Branch)) at $($Discord.Path)" -ForegroundColor Cyan
             }
-            
-            Write-Log "Discord launched successfully"
-        } else {
-            Write-Log "Discord executable not found. Please launch Discord manually."
         }
-    } else {
-        Write-Log "Skipping Discord launch (NoLaunch parameter specified)"
+        return
     }
+    
+    # Filter installations by specified branches if provided
+    if ($Branches.Count -gt 0) {
+        $DiscordInstallations = $DiscordInstallations | Where-Object { $_.Branch -in $Branches }
+        Write-Log "Filtering to specified branches: $($Branches -join ', '). Found $($DiscordInstallations.Count) matching installations."
+    }
+    
+    # Patch each Discord installation
+    $PatchedCount = 0
+    foreach ($Discord in $DiscordInstallations) {
+        Write-Log "Patching Discord $($Discord.Name) (Branch: $($Discord.Branch))..."
+        
+        try {
+            $ProcessResult = & $VencordInstaller "-repair" "-branch" $Discord.Branch 2>&1
+            $ExitCode = $LASTEXITCODE
+            
+            Write-Log "Vencord installer output for $($Discord.Name): $($ProcessResult -join "`n")"
+            
+            if ($ExitCode -eq 0) {
+                Write-Log "Successfully patched Discord $($Discord.Name)"
+                $PatchedCount++
+            } else {
+                Write-Log "Failed to patch Discord $($Discord.Name) - Exit code: $ExitCode"
+            }
+        } catch {
+            Write-Log "Error patching Discord $($Discord.Name): $($_.Exception.Message)"
+        }
+    }
+    
+    Write-Log "Patched $PatchedCount out of $InstallationCount Discord installations"
+    
+    Write-Log "Vencord patching completed. Discord will use its configured startup settings."
     
     Write-Log "Vencord Auto-Start completed successfully"
     
