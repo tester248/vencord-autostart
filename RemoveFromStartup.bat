@@ -2,6 +2,21 @@
 REM RemoveFromStartup.bat - Remove Vencord Auto-Start scheduled task
 REM Uses Task Scheduler method for removal
 
+REM Check for admin privileges and elevate if needed
+net session >nul 2>&1
+if %ERRORLEVEL% NEQ 0 (
+    echo Vencord Auto-Start Removal (Task Scheduler)
+    echo ===========================================
+    echo.
+    echo Administrator privileges required for task removal.
+    echo Requesting elevation...
+    echo.
+    
+    REM Re-run this script as administrator
+    powershell -Command "Start-Process '%~f0' -Verb RunAs"
+    exit /b
+)
+
 echo Vencord Auto-Start Removal (Task Scheduler)
 echo ===========================================
 echo.

@@ -5,6 +5,13 @@ param(
     [switch]$Remove  # Remove from startup instead of adding
 )
 
+# Check if running as Administrator
+function Test-Administrator {
+    $currentUser = [Security.Principal.WindowsIdentity]::GetCurrent()
+    $principal = New-Object Security.Principal.WindowsPrincipal($currentUser)
+    return $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+}
+
 # Get the script directory
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $BatchFile = Join-Path $ScriptDir "VencordAutoStart.bat"
@@ -17,11 +24,20 @@ function Add-VencordStartupTask {
             throw "VencordAutoStart.bat not found at: $BatchFile"
         }
         
-        # Remove existing task if it exists
+        # Check for existing task and remove it if found
         $ExistingTask = Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
         if ($ExistingTask) {
             Write-Host "! Existing task found, updating..." -ForegroundColor Yellow
-            Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false -ErrorAction SilentlyContinue
+            
+            try {
+                Write-Host "  Removing existing task..." -ForegroundColor Gray
+                Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false -ErrorAction Stop
+                Write-Host "  Successfully removed existing task" -ForegroundColor Gray
+                Start-Sleep -Seconds 1  # Brief pause to ensure task is fully removed
+            }
+            catch {
+                throw "Failed to remove existing task: $($_.Exception.Message)"
+            }
         }
         
         # Create scheduled task components
@@ -70,7 +86,36 @@ function Remove-VencordStartupTask {
     }
 }
 
-# Main execution
+# Check if we need to elevate and re-run as Administrator
+if (-not (Test-Administrator)) {
+    Write-Host "Vencord Auto-Start Setup (Task Scheduler)" -ForegroundColor Cyan
+    Write-Host "=========================================" -ForegroundColor Cyan
+    Write-Host ""
+    Write-Host "Administrator privileges required for task management." -ForegroundColor Yellow
+    Write-Host "Requesting elevation..." -ForegroundColor Yellow
+    
+    try {
+        $Arguments = @(
+            "-NoProfile"
+            "-ExecutionPolicy", "Bypass"
+            "-File", "`"$($MyInvocation.MyCommand.Path)`""
+        )
+        
+        if ($Remove) {
+            $Arguments += "-Remove"
+        }
+        
+        Start-Process powershell -Verb RunAs -ArgumentList $Arguments -Wait
+        exit 0
+    }
+    catch {
+        Write-Host "✗ Failed to request elevation: $($_.Exception.Message)" -ForegroundColor Red
+        Write-Host "Please manually run PowerShell as Administrator and try again." -ForegroundColor Yellow
+        exit 1
+    }
+}
+
+# Main execution (now running as Administrator)
 Write-Host "Vencord Auto-Start Setup (Task Scheduler)" -ForegroundColor Cyan
 Write-Host "=========================================" -ForegroundColor Cyan
 Write-Host ""
