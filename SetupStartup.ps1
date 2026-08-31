@@ -23,6 +23,10 @@ function Add-VencordStartupTask {
         if (-not (Test-Path $BatchFile)) {
             throw "VencordAutoStart.bat not found at: $BatchFile"
         }
+        $PSFile = Join-Path $ScriptDir "VencordAutoStart.ps1"
+        if (-not (Test-Path $PSFile)) {
+            throw "VencordAutoStart.ps1 not found at: $PSFile"
+        }
         
         # Check for existing task and remove it if found
         $ExistingTask = Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
@@ -41,7 +45,12 @@ function Add-VencordStartupTask {
         }
         
         # Create scheduled task components
-        $Action = New-ScheduledTaskAction -Execute $BatchFile -WorkingDirectory $ScriptDir
+        # Launch via wscript so the window is fully hidden - no flash at logon
+        $VbsFile = Join-Path $ScriptDir "VencordAutoStart.vbs"
+        if (-not (Test-Path $VbsFile)) {
+            throw "VencordAutoStart.vbs not found at: $VbsFile"
+        }
+        $Action = New-ScheduledTaskAction -Execute "C:\Windows\System32\wscript.exe" -Argument "`"$VbsFile`"" -WorkingDirectory $ScriptDir
         $Trigger = New-ScheduledTaskTrigger -AtLogOn -User $env:USERNAME
         $Principal = New-ScheduledTaskPrincipal -UserId $env:USERNAME -LogonType Interactive -RunLevel Limited
         $Settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable -ExecutionTimeLimit (New-TimeSpan -Minutes 5)

@@ -30,6 +30,26 @@ function Write-Log {
     Add-Content -Path $LogFile -Value $LogEntry -ErrorAction SilentlyContinue
 }
 
+function Test-InstallerNetwork {
+    # The installer needs api.github.com and stalls on TLS timeouts when the
+    # network isn't ready yet (common right after logon). Probe it quickly.
+    for ($Attempt = 1; $Attempt -le 3; $Attempt++) {
+        $Client = New-Object System.Net.Sockets.TcpClient
+        try {
+            $Connect = $Client.BeginConnect("api.github.com", 443, $null, $null)
+            if ($Connect.AsyncWaitHandle.WaitOne(2000) -and $Client.Connected) {
+                return $true
+            }
+        } catch {
+            # DNS or socket failure - treat as not ready
+        } finally {
+            $Client.Close()
+        }
+        if ($Attempt -lt 3) { Start-Sleep -Seconds 1 }
+    }
+    return $false
+}
+
 function Find-DiscordInstallations {
     # Find all Discord installations - return simple array
     $Results = @()
@@ -148,14 +168,36 @@ try {
         Write-Log "Filtering to specified branches: $($Branches -join ', '). Found $($DiscordInstallations.Count) matching installations."
     }
     
+    # Don't let the installer hang on a dead network at logon
+    if (-not (Test-InstallerNetwork)) {
+        Write-Log "api.github.com unreachable - network not ready yet. Skipping patch (Discord will start unmodified)."
+        exit 0
+    }
+    
     # Patch each Discord installation
     $PatchedCount = 0
     foreach ($Discord in $DiscordInstallations) {
         Write-Log "Patching Discord $($Discord.Name) (Branch: $($Discord.Branch))..."
         
         try {
-            $ProcessResult = & $VencordInstaller "-repair" "-branch" $Discord.Branch 2>&1
-            $ExitCode = $LASTEXITCODE
+            $StdOutFile = Join-Path $env:TEMP "vencord-installer-out-$PID.log"
+            $StdErrFile = Join-Path $env:TEMP "vencord-installer-err-$PID.log"
+            
+            $Proc = Start-Process -FilePath $VencordInstaller -ArgumentList @("-repair", "-branch", $Discord.Branch) -NoNewWindow -PassThru -RedirectStandardOutput $StdOutFile -RedirectStandardError $StdErrFile
+            $null = $Proc.Handle  # acquire handle while process is alive so ExitCode is available
+            
+            if ($Proc.WaitForExit(45000)) {
+                $ExitCode = $Proc.ExitCode
+            } else {
+                try { $Proc.Kill() | Out-Null } catch {}
+                Write-Log "Vencord installer timed out after 45s (likely stalled network) - process killed"
+                $ExitCode = -1
+            }
+            
+            $ProcessResult = @()
+            $ProcessResult += Get-Content $StdOutFile -ErrorAction SilentlyContinue
+            $ProcessResult += Get-Content $StdErrFile -ErrorAction SilentlyContinue
+            Remove-Item $StdOutFile, $StdErrFile -Force -ErrorAction SilentlyContinue
             
             Write-Log "Vencord installer output for $($Discord.Name): $($ProcessResult -join "`n")"
             

@@ -14,7 +14,7 @@ if not exist "%PS_SCRIPT%" (
 )
 
 REM Run PowerShell script with bypass execution policy and quiet mode for startup
-powershell.exe -ExecutionPolicy Bypass -WindowStyle Hidden -File "%PS_SCRIPT%" -Quiet
+powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File "%PS_SCRIPT%" -Quiet
 
 REM Exit without showing console window
 exit /b 0
